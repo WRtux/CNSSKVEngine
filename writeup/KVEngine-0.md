@@ -9,8 +9,8 @@
 单Java文件`HashtableSimple.java`，与截图、jar包一并附于附件中。  
 Git仓库：WRtux/CNSSKVEngine
 
-![KVTest](./writeup/KVTest-0.png)
-![KVTest-JIT](./writeup/KVTest-0-JIT.png)
+![KVTest](./assets/KVTest-0.png)
+![KVTest-JIT](./assets/KVTest-0-JIT.png)
 
 ## 改进
 目前索引数组在构造时即确定，不会自动扩展，不够灵活。此外，相比于官方API，整体效率略低，这可能与索引数组大小和算法优化有关。
