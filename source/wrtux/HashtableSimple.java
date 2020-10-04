@@ -2,6 +2,10 @@ package wrtux;
 
 import java.util.Hashtable;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * 简单的哈希表类。不支持并发操作，索引不会自动扩展。
@@ -16,36 +20,58 @@ public class HashtableSimple {
 		protected Node head;
 		
 		/** 链表大小，即结点数。 */
-		protected int size;
+		protected final AtomicInteger size = new AtomicInteger();
 		
-		protected Entry() {}
+		/** 读写锁。 */
+		final ReadWriteLock enlock;
+		
+		/** 读取锁，不阻塞读取。 */
+		protected final Lock readLock;
+		/** 写入锁。 */
+		protected final Lock writeLock;
+		
+		protected Entry() {
+			this.enlock = new ReentrantReadWriteLock();
+			this.readLock = this.enlock.readLock();
+			this.writeLock = this.enlock.writeLock();
+		}
 		
 		/** 获取链表的大小{@link #size}。 */
 		public int getSize() {
-			return this.size;
+			return this.size.intValue();
 		}
 		
 		/** 根据哈希值取值。 */
 		public String get(int hash) {
+			this.readLock.lock();
 			Node ptr = this.head;
 			while(ptr != null) {
-				if(ptr.hash == hash)
+				if(ptr.hash == hash) {
+					this.readLock.unlock();
 					return ptr.value;
+				}
 				ptr = ptr.next;
 			}
+			//不会抛出异常，不使用finally
+			this.readLock.unlock();
 			return null;
 		}
 		
 		/** 根据key值取值。 */
 		public String get(String key) {
-			Node ptr = this.head;
-			int hash = key.hashCode();
-			while(ptr != null) {
-				if(ptr.hash == hash && ptr.key.equals(key))
-					return ptr.value;
-				ptr = ptr.next;
+			this.readLock.lock();
+			try {
+				Node ptr = this.head;
+				int hash = key.hashCode();
+				while(ptr != null) {
+					if(ptr.hash == hash && ptr.key.equals(key))
+						return ptr.value;
+					ptr = ptr.next;
+				}
+				return null;
+			} finally {
+				this.readLock.unlock();
 			}
-			return null;
 		}
 		
 		/**
@@ -53,9 +79,12 @@ public class HashtableSimple {
 		 * 即使key值重复，之后也能取到新加入的值，但是会影响整体效率。
 		 */
 		public void add(Node nod) {
+			this.writeLock.lock();
 			nod.next = this.head;
 			this.head = nod;
-			this.size++;
+			this.size.incrementAndGet();
+			//不会抛出异常，不使用finally
+			this.writeLock.unlock();
 		}
 		
 		/**
@@ -65,18 +94,23 @@ public class HashtableSimple {
 		public void insert(Node nod, int pos) {
 			if(pos < 0)
 				throw new IllegalArgumentException("Negative position.");
-			if(pos == 0) {
-				nod.next = this.head;
-				this.head = nod;
-				this.size++;
-				return;
+			this.writeLock.lock();
+			try {
+				if(pos == 0) {
+					nod.next = this.head;
+					this.head = nod;
+					this.size.incrementAndGet();
+					return;
+				}
+				Node ptr = this.head;
+				for(int i = 1; i < pos && ptr.next != null; i++)
+					ptr = ptr.next;
+				nod.next = ptr.next;
+				ptr.next = nod;
+				this.size.incrementAndGet();
+			} finally {
+				this.writeLock.unlock();
 			}
-			Node ptr = this.head;
-			for(int i = 1; i < pos && ptr.next != null; i++)
-				ptr = ptr.next;
-			nod.next = ptr.next;
-			ptr.next = nod;
-			this.size++;
 		}
 		
 		/**
@@ -86,35 +120,62 @@ public class HashtableSimple {
 		public String put(Node nod) {
 			if(nod == null)
 				throw new NullPointerException();
-			Node ptr = this.head;
-			if(ptr == null) {
-				this.head = nod;
-				this.size = 1; //TODO
-				return null;
-			}
-			if(ptr.hash == nod.hash && ptr.key.equals(nod.key)) {
-				this.head = nod;
-				nod.next = ptr.next; //TODO
-				ptr.next = null;
-				return ptr.value;
-			}
-			while(ptr.next != null) {
-				Node nxt = ptr.next;
-				if(nxt.hash == nod.hash && nxt.key.equals(nod.key)) {
-					ptr.next = nod;
-					nod.next = nxt.next; //TODO
-					nxt.next = null;
-					return nxt.value;
+			this.writeLock.lock();
+			try {
+				Node ptr = this.head;
+				if(ptr == null) {
+					this.head = nod;
+					this.size.set(1);
+					for(ptr = nod.next; ptr != null; ptr = ptr.next)
+						this.size.incrementAndGet();
+					return null;
 				}
+				if(ptr.hash == nod.hash && ptr.key.equals(nod.key)) {
+					this.head = nod;
+					nod.next = ptr.next; //TODO
+					ptr.next = null;
+					return ptr.value;
+				}
+				while(ptr.next != null) {
+					Node nxt = ptr.next;
+					if(nxt.hash == nod.hash && nxt.key.equals(nod.key)) {
+						ptr.next = nod;
+						nod.next = nxt.next; //TODO
+						nxt.next = null;
+						return nxt.value;
+					}
+					ptr = nxt;
+				}
+				ptr.next = nod;
+				for(ptr = nod; ptr != null; ptr = ptr.next)
+					this.size.incrementAndGet();
+				return null;
+			} finally {
+				this.writeLock.unlock();
+			}
+		}
+		
+		public void clear() {
+			this.writeLock.lock();
+			Node ptr = this.head;
+			this.head = null;
+			while(ptr != null) {
+				Node nxt = ptr.next;
+				ptr.next = null;
 				ptr = nxt;
 			}
-			ptr.next = nod;
-			this.size++; //TODO
-			return null;
+			this.size.set(0);
+			//不会抛出异常，不使用finally
+			this.writeLock.unlock();
 		}
 		
 		public void optimize() {
-			//TODO
+			this.writeLock.lock();
+			try {
+				//TODO 将来实现
+			} finally {
+				this.writeLock.unlock();
+			}
 		}
 		
 	}
@@ -122,6 +183,7 @@ public class HashtableSimple {
 	/** 结点类。 */
 	public static final class Node {
 		
+		/** key值，不能为{@code null}。 */
 		public final String key;
 		protected final int hash;
 		
@@ -147,13 +209,13 @@ public class HashtableSimple {
 	protected Entry[] field;
 	
 	/** 哈希表大小，即结点数。 */
-	protected int size;
+	protected final AtomicInteger size = new AtomicInteger();
 	
 	int shift;
 	
 	void initField(int b) {
 		if(b > 24)
-			throw new IllegalArgumentException("Illegal bit count.");
+			throw new IllegalArgumentException("Bit count too large.");
 		this.field = new Entry[1 << b];
 		for(int i = 0; i < this.field.length; i++)
 			this.field[i] = new Entry();
@@ -175,7 +237,7 @@ public class HashtableSimple {
 	
 	/** 获取哈希表的大小{@link #size}。 */
 	public int getSize() {
-		return this.size;
+		return this.size.intValue();
 	}
 	
 	/** 获取哈希表的容量（{@link #field}的大小）。 */
@@ -201,7 +263,7 @@ public class HashtableSimple {
 	public void add(String key, String val) {
 		int hash = key.hashCode();
 		this.field[hash >>> this.shift].add(new Node(key, hash, val));
-		this.size++;
+		this.size.incrementAndGet();
 	}
 	
 	/**
@@ -209,21 +271,28 @@ public class HashtableSimple {
 	 * @return 被替换的值。
 	 */
 	public String put(String key, String val) {
-		int hash = key.hashCode(), i = hash >>> this.shift;
-		String prev = this.field[i].put(new Node(key, hash, val));
+		int hash = key.hashCode();
+		String prev = this.field[hash >>> this.shift].put(new Node(key, hash, val));
 		if(prev == null)
-			this.size++;
+			this.size.incrementAndGet();
 		return prev;
 	}
 	
+	public void clear() {
+		for(Entry en : this.field)
+			en.clear();
+		this.size.set(0);
+	}
+	
 	public void optimize() {
-		//TODO
+		//TODO 实现需要调整模型
 	}
 	
 }
 
 final class Main {
 	
+	/** 尝试让JIT本地化{@link HashtableSimple}。 */
 	static void init() {
 		HashtableSimple htbl = new HashtableSimple(256);
 		for(int i = 0; i < 16384; i++) {
@@ -232,48 +301,49 @@ final class Main {
 			htbl.put(key, val);
 			htbl.get(key);
 		}
+		htbl.clear();
+		System.gc();
 	}
 	
 	public static void main(String[] args) {
 		
 		//初始化
-		HashtableSimple htbl = new HashtableSimple(256);
-		Hashtable<String, String> ref = new Hashtable<>(256);
-		String[] keys = new String[1024], vals = new String[keys.length];
+		HashtableSimple htbl = new HashtableSimple(1024);
+		Hashtable<String, String> ref = new Hashtable<>(1024);
+		String[] keys = new String[4096], vals = new String[keys.length];
 		Random rand = new Random();
 		for(int i = 0; i < keys.length; i++) {
 			keys[i] = "k" + i;
 			vals[i] = Integer.toHexString(rand.nextInt());
 		}
-		if(args.length == 1 && args[0].equals("-i")) init();
+		init();
 		
+		//HashtableSimple单线程效率测试
 		long t1 = System.nanoTime();
 		for(int i = 0; i < keys.length; i++)
-			keys[i].hashCode();
-		long t2 = System.nanoTime();
-		System.out.printf("Hash time: %dus%n", (t2 - t1) / 1000);
-		
-		//HashtableSimple效率测试
-		t1 = System.nanoTime();
-		for(int i = 0; i < keys.length; i++)
 			htbl.add(keys[i], vals[i]);
-		t2 = System.nanoTime();
-		System.out.printf("Add time: %dus%n", (t2 - t1) / 1000);
+		long t2 = System.nanoTime();
+		System.out.printf("1T Add time: %dus%n", (t2 - t1) / 1000);
 		
 		t1 = System.nanoTime();
 		for(int i = 0; i < keys.length; i++)
 			htbl.put(keys[i], vals[i]);
 		t2 = System.nanoTime();
-		System.out.printf("Put time: %dus%n", (t2 - t1) / 1000);
+		System.out.printf("1T Put time: %dus%n", (t2 - t1) / 1000);
 		
 		t1 = System.nanoTime();
 		@SuppressWarnings("unused") String val;
 		for(String key : keys)
 			val = htbl.get(key);
 		t2 = System.nanoTime();
-		System.out.printf("Get time: %dus%n", (t2 - t1) / 1000);
+		System.out.printf("1T Get time: %dus%n", (t2 - t1) / 1000);
 		
-		//API Hashtable效率测试
+		t1 = System.nanoTime();
+		htbl.clear();
+		t2 = System.nanoTime();
+		System.out.printf("Clear time: %dus%n", (t2 - t1) / 1000);
+		
+		//API Hashtable多线程效率测试
 		t1 = System.nanoTime();
 		for(int i = 0; i < keys.length; i++)
 			ref.put(keys[i], vals[i]);
