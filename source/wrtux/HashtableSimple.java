@@ -1,7 +1,5 @@
 package wrtux;
 
-import java.util.Hashtable;
-import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -286,84 +284,6 @@ public class HashtableSimple {
 	
 	public void optimize() {
 		//TODO 实现需要调整模型
-	}
-	
-}
-
-final class Main {
-	
-	/** 尝试让JIT本地化{@link HashtableSimple}。 */
-	static void init() {
-		HashtableSimple htbl = new HashtableSimple(256);
-		for(int i = 0; i < 16384; i++) {
-			String key = Integer.toString(i), val = Integer.toHexString(i);
-			htbl.add(key, val);
-			htbl.put(key, val);
-			htbl.get(key);
-		}
-		htbl.clear();
-		System.gc();
-	}
-	
-	public static void main(String[] args) {
-		
-		//初始化
-		HashtableSimple htbl = new HashtableSimple(1024);
-		Hashtable<String, String> ref = new Hashtable<>(1024);
-		String[] keys = new String[4096], vals = new String[keys.length];
-		Random rand = new Random();
-		for(int i = 0; i < keys.length; i++) {
-			keys[i] = "k" + i;
-			vals[i] = Integer.toHexString(rand.nextInt());
-		}
-		init();
-		
-		//HashtableSimple单线程效率测试
-		long t1 = System.nanoTime();
-		for(int i = 0; i < keys.length; i++)
-			htbl.add(keys[i], vals[i]);
-		long t2 = System.nanoTime();
-		System.out.printf("1T Add time: %dus%n", (t2 - t1) / 1000);
-		
-		t1 = System.nanoTime();
-		for(int i = 0; i < keys.length; i++)
-			htbl.put(keys[i], vals[i]);
-		t2 = System.nanoTime();
-		System.out.printf("1T Put time: %dus%n", (t2 - t1) / 1000);
-		
-		t1 = System.nanoTime();
-		@SuppressWarnings("unused") String val;
-		for(String key : keys)
-			val = htbl.get(key);
-		t2 = System.nanoTime();
-		System.out.printf("1T Get time: %dus%n", (t2 - t1) / 1000);
-		
-		t1 = System.nanoTime();
-		htbl.clear();
-		t2 = System.nanoTime();
-		System.out.printf("Clear time: %dus%n", (t2 - t1) / 1000);
-		
-		//API Hashtable多线程效率测试
-		t1 = System.nanoTime();
-		for(int i = 0; i < keys.length; i++)
-			ref.put(keys[i], vals[i]);
-		t2 = System.nanoTime();
-		System.out.printf("Put time ref: %dus%n", (t2 - t1) / 1000);
-		
-		t1 = System.nanoTime();
-		for(String key : keys)
-			val = ref.get(key);
-		t2 = System.nanoTime();
-		System.out.printf("Get time ref: %dus%n", (t2 - t1) / 1000);
-		
-		//数据验证
-		System.out.println();
-		for(int i = 1; i <= keys.length; i <<= 1) {
-			int j = i - 1;
-			System.out.printf("Key<%s>: %s - %s%n", keys[j], htbl.get(keys[j]), vals[j]);
-		}
-		System.out.printf("Capacity: %d, size: %d%n", htbl.getCapacity(), htbl.getSize());
-		
 	}
 	
 }
