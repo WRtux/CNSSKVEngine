@@ -1,0 +1,65 @@
+=====Test 16384c 32768n=====
+1T add time: 1617us
+1T put time: 114373us
+1T get time: 117192us
+Clear time: 343us
+1T put time ref: 1985us
+1T get time ref: 1582us
+Clear time ref: 16us
+
+4T add time: 7171us
+4T put time: 71942us
+4T get time: 110628us
+4T put time ref: 3812us
+4T get time ref: 2573us
+
+Key<k0>: 171b03ba - 171b03ba
+Key<k1>: adf4279 - adf4279
+Key<k3>: 641c655f - 641c655f
+Key<k7>: ced1684a - ced1684a
+Key<k15>: b54afb31 - b54afb31
+Key<k31>: eae0ec14 - eae0ec14
+Key<k63>: f01f4925 - f01f4925
+Key<k127>: 97b95b99 - 97b95b99
+Key<k255>: eca1352d - eca1352d
+Key<k511>: b559f603 - b559f603
+Key<k1023>: c4bb866c - c4bb866c
+Key<k2047>: e53da22f - e53da22f
+Key<k4095>: f733c574 - f733c574
+Key<k8191>: 4e97bafe - 4e97bafe
+Key<k16383>: 48be6211 - 48be6211
+Key<k32767>: 5686a038 - 5686a038
+
+=====Test 65536c 131072n=====
+1T add time: 3996us
+1T put time: 163916us
+1T get time: 193070us
+Clear time: 1743us
+1T put time ref: 3685us
+1T get time ref: 2157us
+Clear time ref: 80us
+
+4T add time: 3266us
+4T put time: 42271us
+4T get time: 49556us
+4T put time ref: 10218us
+4T get time ref: 7714us
+
+Key<k0>: 84e919c5 - 84e919c5
+Key<k1>: ee61f371 - ee61f371
+Key<k3>: 6dedf1ed - 6dedf1ed
+Key<k7>: 31449405 - 31449405
+Key<k15>: 530c8a70 - 530c8a70
+Key<k31>: 49a530f4 - 49a530f4
+Key<k63>: da84db35 - da84db35
+Key<k127>: 445169fd - 445169fd
+Key<k255>: 5ca6760d - 5ca6760d
+Key<k511>: e97e132d - e97e132d
+Key<k1023>: 3d2bb968 - 3d2bb968
+Key<k2047>: ec6375ce - ec6375ce
+Key<k4095>: c35aae5a - c35aae5a
+Key<k8191>: bc181e73 - bc181e73
+Key<k16383>: 1e4efaa5 - 1e4efaa5
+Key<k32767>: d1aca308 - d1aca308
+Key<k65535>: 5427b3cf - 5427b3cf
+Key<k131071>: c81cd55c - c81cd55c
