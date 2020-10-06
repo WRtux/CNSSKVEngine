@@ -1,9 +1,19 @@
 package wrtux;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.zip.Deflater;
+import java.util.zip.DeflaterOutputStream;
+import java.util.zip.Inflater;
+import java.util.zip.InflaterInputStream;
 
 /**
  * 简单的哈希表类。不支持并发操作，索引不会自动扩展。
@@ -13,6 +23,41 @@ public class HashtableS {
 	
 	/** 索引项类。结点构成链表结构。 */
 	public static final class Entry {
+		
+		public static Entry construct(InputStream in) throws IOException {
+			DataInputStream dis;
+			if(in instanceof DataInputStream)
+				dis = (DataInputStream)in;
+			else
+				dis = new DataInputStream(in);
+			Entry en = new Entry();
+			int s = dis.readInt();
+			en.size.set(s);
+			if(s > 0) {
+				Node nod = en.head = Node.construct(dis);
+				for(int i = 1; i < s; i++) {
+					nod.next = Node.construct(dis);
+					nod = nod.next;
+				}
+			}
+			return en;
+		}
+		
+		public void serialize(OutputStream out) throws IOException {
+			DataOutputStream dos;
+			if(out instanceof DataOutputStream)
+				dos = (DataOutputStream)out;
+			else
+				dos = new DataOutputStream(out);
+			this.readLock.lock();
+			try {
+				dos.writeInt(this.size.get());
+				for(Node nod = this.head; nod != null; nod = nod.next)
+					nod.serialize(dos);
+			} finally {
+				this.readLock.unlock();
+			}
+		}
 		
 		/** 指向首个结点。若链表为空，则为{@code null}。 */
 		protected Node head;
@@ -36,7 +81,7 @@ public class HashtableS {
 		
 		/** 获取链表的大小{@link #size}。 */
 		public int getSize() {
-			return this.size.intValue();
+			return this.size.get();
 		}
 		
 		/** 根据哈希值取值。 */
@@ -181,6 +226,25 @@ public class HashtableS {
 	/** 结点类。 */
 	public static final class Node {
 		
+		public static Node construct(InputStream in) throws IOException {
+			DataInputStream dis;
+			if(in instanceof DataInputStream)
+				dis = (DataInputStream)in;
+			else
+				dis = new DataInputStream(in);
+			return new Node(dis.readUTF(), dis.readUTF());
+		}
+		
+		public void serialize(OutputStream out) throws IOException {
+			DataOutputStream dos;
+			if(out instanceof DataOutputStream)
+				dos = (DataOutputStream)out;
+			else
+				dos = new DataOutputStream(out);
+			dos.writeUTF(this.key);
+			dos.writeUTF(this.value);
+		}
+		
 		/** key值，不能为{@code null}。 */
 		public final String key;
 		protected final int hash;
@@ -201,6 +265,41 @@ public class HashtableS {
 			this(key, key.hashCode(), val);
 		}
 		
+	}
+	
+	protected static final byte[] MAGIC = new byte[] {(byte)'Ç', 'N', 'S', 'S'};
+	
+	public static HashtableS construct(InputStream in, boolean comp) throws IOException {
+		DataInputStream dis;
+		if(comp)
+			dis = new DataInputStream(new InflaterInputStream(in, new Inflater(true)));
+		else if(in instanceof DataInputStream)
+			dis = (DataInputStream)in;
+		else
+			dis = new DataInputStream(in);
+		byte[] head = new byte[MAGIC.length];
+		dis.readFully(head);
+		if(!Arrays.equals(head, MAGIC))
+			throw new IOException("Head mismatch.");
+		HashtableS htbl = new HashtableS(dis.readInt());
+		for(int i = 0; i < htbl.field.length; i++)
+			htbl.field[i] = Entry.construct(dis);
+		return htbl;
+	}
+	
+	public void serialize(OutputStream out, boolean comp) throws IOException {
+		DataOutputStream dos;
+		if(comp)
+			dos = new DataOutputStream(new DeflaterOutputStream(out, new Deflater(8, true)));
+		else if(out instanceof DataOutputStream)
+			dos = (DataOutputStream)out;
+		else
+			dos = new DataOutputStream(out);
+		dos.write(MAGIC);
+		dos.writeInt(this.field.length);
+		for(Entry en : this.field)
+			en.serialize(dos);
+		dos.flush();
 	}
 	
 	/** 索引数组。 */
@@ -225,7 +324,7 @@ public class HashtableS {
 		int b = 0;
 		for(cap--; cap > 0; cap >>= 1)
 			b++;
-		this.initField(Math.max(b, 4));
+		this.initField(Math.max(b, 2));
 	}
 	
 	/** 使用默认容量构造哈希表。 */
@@ -235,7 +334,7 @@ public class HashtableS {
 	
 	/** 获取哈希表的大小{@link #size}。 */
 	public int getSize() {
-		return this.size.intValue();
+		return this.size.get();
 	}
 	
 	/** 获取哈希表的容量（{@link #field}的大小）。 */
