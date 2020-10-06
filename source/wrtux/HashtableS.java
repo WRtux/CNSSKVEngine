@@ -34,9 +34,9 @@ public class HashtableS {
 			int s = dis.readInt();
 			en.size.set(s);
 			if(s > 0) {
-				Node nod = en.head = Node.construct(dis);
+				Node nod = en.head = new Node(dis.readUTF(), dis.readUTF());
 				for(int i = 1; i < s; i++) {
-					nod.next = Node.construct(dis);
+					nod.next = new Node(dis.readUTF(), dis.readUTF());
 					nod = nod.next;
 				}
 			}
@@ -49,11 +49,16 @@ public class HashtableS {
 				dos = (DataOutputStream)out;
 			else
 				dos = new DataOutputStream(out);
+			int s = this.size.get();
+			dos.writeInt(s);
+			if(s == 0)
+				return;
 			this.readLock.lock();
 			try {
-				dos.writeInt(this.size.get());
-				for(Node nod = this.head; nod != null; nod = nod.next)
-					nod.serialize(dos);
+				for(Node nod = this.head; nod != null; nod = nod.next) {
+					dos.writeUTF(nod.key);
+					dos.writeUTF(nod.value);
+				}
 			} finally {
 				this.readLock.unlock();
 			}
