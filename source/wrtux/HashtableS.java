@@ -293,10 +293,12 @@ public class HashtableS {
 	}
 	
 	public void serialize(OutputStream out, boolean comp) throws IOException {
+		DeflaterOutputStream dfls = null;
 		DataOutputStream dos;
-		if(comp)
-			dos = new DataOutputStream(new DeflaterOutputStream(out, new Deflater(8, true)));
-		else if(out instanceof DataOutputStream)
+		if(comp) {
+			dfls = new DeflaterOutputStream(out, new Deflater(8, true), true);
+			dos = new DataOutputStream(dfls);
+		} else if(out instanceof DataOutputStream)
 			dos = (DataOutputStream)out;
 		else
 			dos = new DataOutputStream(out);
@@ -304,7 +306,10 @@ public class HashtableS {
 		dos.writeInt(this.field.length);
 		for(Entry en : this.field)
 			en.serialize(dos);
-		dos.flush();
+		if(comp) {
+			dfls.flush();
+			dfls.finish();
+		}
 	}
 	
 	/** 索引数组。 */
