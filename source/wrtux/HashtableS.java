@@ -9,7 +9,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * 简单的哈希表类。不支持并发操作，索引不会自动扩展。
  * @author Wilderness Ranger
  */
-public class HashtableSimple {
+public class HashtableS {
 	
 	/** 索引项类。结点构成链表结构。 */
 	public static final class Entry {
@@ -221,7 +221,7 @@ public class HashtableSimple {
 	}
 	
 	/** 参考给定容量构造哈希表。 */
-	public HashtableSimple(int cap) {
+	public HashtableS(int cap) {
 		int b = 0;
 		for(cap--; cap > 0; cap >>= 1)
 			b++;
@@ -229,7 +229,7 @@ public class HashtableSimple {
 	}
 	
 	/** 使用默认容量构造哈希表。 */
-	public HashtableSimple() {
+	public HashtableS() {
 		this.initField(4);
 	}
 	

@@ -40,11 +40,11 @@ final class Tester {
 		
 	}
 	
-	static final class Adder extends Task<HashtableSimple> {
+	static final class Adder extends Task<HashtableS> {
 		
 		protected final String[] keys, values;
 		
-		protected Adder(HashtableSimple htbl, String[] keys, String[] vals) {
+		protected Adder(HashtableS htbl, String[] keys, String[] vals) {
 			super(htbl);
 			this.keys = keys;
 			this.values = vals;
@@ -57,11 +57,11 @@ final class Tester {
 		
 	}
 	
-	static final class Putter extends Task<HashtableSimple> {
+	static final class Putter extends Task<HashtableS> {
 		
 		protected final String[] keys, values;
 		
-		protected Putter(HashtableSimple htbl, String[] keys, String[] vals) {
+		protected Putter(HashtableS htbl, String[] keys, String[] vals) {
 			super(htbl);
 			this.keys = keys;
 			this.values = vals;
@@ -74,11 +74,11 @@ final class Tester {
 		
 	}
 	
-	static final class Getter extends Task<HashtableSimple> {
+	static final class Getter extends Task<HashtableS> {
 		
 		protected final String[] keys;
 		
-		protected Getter(HashtableSimple htbl, String[] keys) {
+		protected Getter(HashtableS htbl, String[] keys) {
 			super(htbl);
 			this.keys = keys;
 		}
@@ -126,7 +126,7 @@ final class Tester {
 	/** 尝试让JIT本地化用到的方法。 */
 	static void init() {
 		final int cap = 16384, cnt = 32768;
-		HashtableSimple htbl = new HashtableSimple(cap);
+		HashtableS htbl = new HashtableS(cap);
 		Hashtable<String, String> ref = new Hashtable<>(cap);
 		for(int i = 0; i < 16; i++) {
 			for(int j = 0; j < cnt; j++) {
@@ -147,7 +147,7 @@ final class Tester {
 		System.out.printf("=====Test %dc %dn=====%n", cap, cnt);
 		
 		//初始化
-		HashtableSimple htbl = new HashtableSimple(cap);
+		HashtableS htbl = new HashtableS(cap);
 		Hashtable<String, String> ref = new Hashtable<>(cap);
 		String[] keys = new String[cnt], vals = new String[cnt];
 		final Random rand = new Random();
@@ -163,7 +163,7 @@ final class Tester {
 			tvals[i] = Arrays.copyOfRange(vals, tnum * i, tnum * (i + 1));
 		}
 		
-		//HashtableSimple单线程效率测试
+		//HashtableS单线程效率测试
 		Adder adr = new Adder(htbl, keys, vals);
 		adr.run();
 		System.out.printf("1T add time: %dus%n", adr.time / 1000);
@@ -196,7 +196,7 @@ final class Tester {
 		System.out.printf("Clear time ref: %dus%n", (t2 - t1) / 1000);
 		System.out.println();
 		
-		//HashtableSimple多线程效率测试
+		//HashtableS多线程效率测试
 		Adder[] adrs = new Adder[tcnt];
 		for(int i = 0; i < adrs.length; i++)
 			adrs[i] = new Adder(htbl, tkeys[i], tvals[i]);
