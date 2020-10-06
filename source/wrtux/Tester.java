@@ -1,5 +1,13 @@
 package wrtux;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.Hashtable;
 import java.util.Random;
@@ -142,7 +150,7 @@ final class Tester {
 		}
 	}
 	
-	static void test(int cap, int cnt) {
+	static void accessTest(int cap, int cnt) {
 		
 		System.out.printf("=====Test %dc %dn=====%n", cap, cnt);
 		
@@ -222,21 +230,64 @@ final class Tester {
 		for(int i = 0; i < hgtrs.length; i++)
 			hgtrs[i] = new HGetter(ref, tkeys[i]);
 		System.out.printf("4T get time ref: %dus%n", Task.multiTask(hgtrs) / 1000);
+		System.out.println();
 		
-		//数据验证
-		System.out.println();
-		for(int i = 1; i <= keys.length; i <<= 1) {
-			int j = i - 1;
-			System.out.printf("Key<%s>: %s - %s%n", keys[j], htbl.get(keys[j]), vals[j]);
+	}
+	
+	static void persistTest(int cnt, boolean comp) {
+		
+		System.out.printf("=====Persist test %dn=====%n", cnt);
+		
+		//初始化
+		HashtableS htbl = new HashtableS(cnt / 2);
+		String[] keys = new String[cnt], vals = new String[cnt];
+		final Random rand = new Random();
+		for(int i = 0; i < keys.length; i++) {
+			keys[i] = "k" + i;
+			vals[i] = Integer.toHexString(rand.nextInt());
 		}
-		System.out.println();
+		
+		Adder adr = new Adder(htbl, keys, vals);
+		adr.run();
+		
+		//持久化测试
+		try {
+			
+			File fl = new File(comp ? "kv.dfl.bin" : "kv.bin");
+			OutputStream out = new BufferedOutputStream(new FileOutputStream(fl));
+			htbl.serialize(out, comp);
+			out.close();
+			out = null;
+			System.out.printf("File size: %dB %s%n", fl.length(), comp ? "compressed" : "original");
+			
+			htbl = null;
+			System.gc();
+			InputStream in = new BufferedInputStream(new FileInputStream(fl));
+			htbl = HashtableS.construct(in, comp);
+			in.close();
+			in = null;
+			
+			for(int i = 0; i < keys.length; i++)
+				if(!htbl.get(keys[i]).equals(vals[i])) {
+					System.err.printf("Key %d not consistent!%n", i);
+					return;
+				}
+			System.out.println("Check pass.");
+			System.out.println();
+			
+		} catch(IOException ex) {
+			System.err.println(ex.getLocalizedMessage());
+			System.err.println("IOException! Test failed.");
+		}
 		
 	}
 	
 	public static void main(String[] args) {
 		init();
-		test(16384, 32768);
-		test(65536, 131072);
+		accessTest(16384, 32768);
+		accessTest(65536, 131072);
+		persistTest(32768, false);
+		persistTest(32768, true);
 	}
 	
 }
