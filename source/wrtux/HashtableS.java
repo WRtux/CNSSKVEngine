@@ -122,9 +122,18 @@ public class HashtableS {
 			}
 		}
 		
+		/** 获取指定位置的结点。 */
+		public Node getNode(int pos) {
+			Node nod = this.head;
+			for(int i = 0; i < pos && nod != null; i++)
+				nod = nod.next;
+			return nod;
+		}
+		
 		/**
 		 * 直接加入结点，不考虑重复key值。
 		 * 即使key值重复，之后也能取到新加入的值，但是会影响整体效率。
+		 * @param nod 待加入结点。其链接的结点不会加入。
 		 */
 		public void add(Node nod) {
 			this.writeLock.lock();
@@ -138,6 +147,8 @@ public class HashtableS {
 		/**
 		 * 直接在指定位置插入结点，不考虑重复key值。
 		 * 如果key值重复，之后会取得靠前结点的值。
+		 * @param nod 待插入结点。其链接的结点不会插入。
+		 * @param pos 插入位置，0为首节点前。
 		 */
 		public void insert(Node nod, int pos) {
 			if(pos < 0)
@@ -163,7 +174,7 @@ public class HashtableS {
 		
 		/**
 		 * 加入结点，若有重复，则替换原有结点。
-		 * @param nod 待加入结点。若链接了更多结点，将一并加入。
+		 * @param nod 待加入结点。其链接的结点不会加入。
 		 */
 		public String put(Node nod) {
 			if(nod == null)
@@ -173,14 +184,13 @@ public class HashtableS {
 				Node ptr = this.head;
 				if(ptr == null) {
 					this.head = nod;
+					nod.next = null;
 					this.size.set(1);
-					for(ptr = nod.next; ptr != null; ptr = ptr.next)
-						this.size.incrementAndGet();
 					return null;
 				}
 				if(ptr.hash == nod.hash && ptr.key.equals(nod.key)) {
 					this.head = nod;
-					nod.next = ptr.next; //TODO
+					nod.next = ptr.next;
 					ptr.next = null;
 					return ptr.value;
 				}
@@ -188,21 +198,21 @@ public class HashtableS {
 					Node nxt = ptr.next;
 					if(nxt.hash == nod.hash && nxt.key.equals(nod.key)) {
 						ptr.next = nod;
-						nod.next = nxt.next; //TODO
+						nod.next = nxt.next;
 						nxt.next = null;
 						return nxt.value;
 					}
 					ptr = nxt;
 				}
 				ptr.next = nod;
-				for(ptr = nod; ptr != null; ptr = ptr.next)
-					this.size.incrementAndGet();
+				nod.next = null;
 				return null;
 			} finally {
 				this.writeLock.unlock();
 			}
 		}
 		
+		/** 清除链表。 */
 		public void clear() {
 			this.writeLock.lock();
 			Node ptr = this.head;
@@ -217,6 +227,7 @@ public class HashtableS {
 			this.writeLock.unlock();
 		}
 		
+		/** 优化链表结构，清除重复key值。 */
 		public void optimize() {
 			this.writeLock.lock();
 			try {
@@ -274,6 +285,11 @@ public class HashtableS {
 	
 	protected static final byte[] MAGIC = new byte[] {(byte)'Ç', 'N', 'S', 'S'};
 	
+	/**
+	 * 从输入流中读取被{@link #serialize(OutputStream, boolean)}序列化的哈希表，并返回此哈希表。
+	 * @param in 输入流。
+	 * @param comp 哈希表是否压缩，需与序列化时设置相同。
+	 */
 	public static HashtableS construct(InputStream in, boolean comp) throws IOException {
 		DataInputStream dis;
 		if(comp)
@@ -293,6 +309,12 @@ public class HashtableS {
 		return htbl;
 	}
 	
+	/**
+	 * 输出序列化的哈希表。可用{@link #construct(InputStream, boolean)}再次读取。
+	 * 压缩哈希表时采用Deflate算法。
+	 * @param out 输出流。
+	 * @param comp 是否压缩哈希表。
+	 */
 	public void serialize(OutputStream out, boolean comp) throws IOException {
 		DeflaterOutputStream dfls = null;
 		DataOutputStream dos;
@@ -387,6 +409,7 @@ public class HashtableS {
 		return prev;
 	}
 	
+	/** 清除哈希表。 */
 	public void clear() {
 		for(Entry en : this.field)
 			en.clear();
