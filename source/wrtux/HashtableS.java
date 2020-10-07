@@ -110,7 +110,7 @@ public class HashtableS {
 			this.readLock.lock();
 			try {
 				Node ptr = this.head;
-				int hash = key.hashCode();
+				int hash = Hasher.hash(key);
 				while(ptr != null) {
 					if(ptr.hash == hash && ptr.key.equals(key))
 						return ptr.value;
@@ -267,7 +267,7 @@ public class HashtableS {
 			this.value = val;
 		}
 		protected Node(String key, String val) {
-			this(key, key.hashCode(), val);
+			this(key, Hasher.hash(key), val);
 		}
 		
 	}
@@ -361,7 +361,7 @@ public class HashtableS {
 	
 	/** 根据key值取值。 */
 	public String get(String key) {
-		int i = key.hashCode() >>> this.shift;
+		int i = Hasher.hash(key) >>> this.shift;
 		return this.field[i].get(key);
 	}
 	
@@ -370,7 +370,7 @@ public class HashtableS {
 	 * 即使key值重复，之后也能取到新加入的值，但是会影响整体效率。
 	 */
 	public void add(String key, String val) {
-		int hash = key.hashCode();
+		int hash = Hasher.hash(key);
 		this.field[hash >>> this.shift].add(new Node(key, hash, val));
 		this.size.incrementAndGet();
 	}
@@ -380,7 +380,7 @@ public class HashtableS {
 	 * @return 被替换的值。
 	 */
 	public String put(String key, String val) {
-		int hash = key.hashCode();
+		int hash = Hasher.hash(key);
 		String prev = this.field[hash >>> this.shift].put(new Node(key, hash, val));
 		if(prev == null)
 			this.size.incrementAndGet();
