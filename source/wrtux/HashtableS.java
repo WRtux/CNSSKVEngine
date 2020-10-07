@@ -287,6 +287,7 @@ public class HashtableS {
 		if(!Arrays.equals(head, MAGIC))
 			throw new IOException("Head mismatch.");
 		HashtableS htbl = new HashtableS(dis.readInt());
+		htbl.size.set(dis.readInt());
 		for(int i = 0; i < htbl.field.length; i++)
 			htbl.field[i] = Entry.construct(dis);
 		return htbl;
@@ -304,6 +305,7 @@ public class HashtableS {
 			dos = new DataOutputStream(out);
 		dos.write(MAGIC);
 		dos.writeInt(this.field.length);
+		dos.writeInt(this.size.get());
 		for(Entry en : this.field)
 			en.serialize(dos);
 		if(comp) {
